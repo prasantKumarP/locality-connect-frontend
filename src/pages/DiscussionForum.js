@@ -1,10 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { suggestionAPI } from '../services/api';
 import SuggestionCard from '../components/SuggestionCard';
+import ChatModal from '../components/ChatModal';
 
 const DiscussionForum = () => {
   const [suggestions, setSuggestions] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [selectedSuggestion, setSelectedSuggestion] = useState(null);
+  const [isChatOpen, setIsChatOpen] = useState(false);
 
   useEffect(() => {
     fetchDiscussions();
@@ -24,6 +27,16 @@ const DiscussionForum = () => {
 
   const handleVoteUpdate = () => {
     fetchDiscussions();
+  };
+
+  const handleOpenChat = (suggestion) => {
+    setSelectedSuggestion(suggestion);
+    setIsChatOpen(true);
+  };
+
+  const handleCloseChat = () => {
+    setIsChatOpen(false);
+    setSelectedSuggestion(null);
   };
 
   if (loading) {
@@ -57,16 +70,35 @@ const DiscussionForum = () => {
         <div>
           <div className="alert alert-info" style={{ marginBottom: '2rem' }}>
             <strong>Priority System:</strong> Priority 1 = Highest (100+ likes), Priority 5 = Lowest (&lt;10 likes)
+            <br />
+            <strong>💬 New:</strong> Click "Join Discussion" to chat about any suggestion!
           </div>
           
           {suggestions.map((suggestion) => (
-            <SuggestionCard
-              key={suggestion.id}
-              suggestion={suggestion}
-              onVoteUpdate={handleVoteUpdate}
-            />
+            <div key={suggestion.id}>
+              <SuggestionCard
+                suggestion={suggestion}
+                onVoteUpdate={handleVoteUpdate}
+              />
+              <div style={{ marginTop: '-1rem', marginBottom: '1.5rem', paddingLeft: '1.5rem' }}>
+                <button
+                  className="chat-btn"
+                  onClick={() => handleOpenChat(suggestion)}
+                >
+                  💬 Join Discussion
+                </button>
+              </div>
+            </div>
           ))}
         </div>
+      )}
+
+      {selectedSuggestion && (
+        <ChatModal
+          isOpen={isChatOpen}
+          onClose={handleCloseChat}
+          suggestion={selectedSuggestion}
+        />
       )}
     </div>
   );
