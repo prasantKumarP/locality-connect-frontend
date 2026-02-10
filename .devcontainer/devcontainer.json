@@ -1,6 +1,7 @@
 {
   "name": "Locality Connect Dev",
-  "image": "mcr.microsoft.com/devcontainers/universal:2",
+  "image": "mcr.microsoft.com/devcontainers/base:ubuntu-22.04",
+
   "features": {
     "ghcr.io/devcontainers/features/java:1": {
       "version": "17"
@@ -9,15 +10,18 @@
       "version": "18"
     }
   },
-  "postCreateCommand": "git clone https://github.com/prasantKumarP/locality-connect-backend.git ../locality-connect-backend",
+
+  "postCreateCommand": "cd /workspaces && [ -d locality-connect-backend ] || git clone https://github.com/prasantKumarP/locality-connect-backend.git",
+
   "forwardPorts": [3000, 8080],
+
   "portsAttributes": {
     "3000": {
-      "label": "Locality Connect Frontend",
+      "label": "React Frontend",
       "onAutoForward": "openBrowser"
     },
     "8080": {
-      "label": "Locality Connect Backend"
+      "label": "Spring Boot Backend"
     }
   }
 }
