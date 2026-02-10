@@ -66,4 +66,10 @@ export const voteAPI = {
   cast: (data) => api.post('/votes', data),
 };
 
+// Chat APIs
+export const chatAPI = {
+  getOrCreateChat: (suggestionId) => api.get(`/chats/suggestion/${suggestionId}`),
+  sendMessage: (suggestionId, message) => api.post(`/chats/suggestion/${suggestionId}/message`, { message }),
+};
+
 export default api;
