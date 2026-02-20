@@ -10,6 +10,7 @@ const ChatModal = ({ isOpen, onClose, suggestion }) => {
   const [chatData, setChatData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
+  const [error, setError] = useState(null);
   const messagesEndRef = useRef(null);
   const { user } = useAuth();
 
@@ -34,16 +35,29 @@ const ChatModal = ({ isOpen, onClose, suggestion }) => {
   const initializeChat = async () => {
     try {
       setLoading(true);
+      setError(null);
+      
+      console.log('Initializing chat for suggestion:', suggestion.id);
       
       // Get or create chat from backend
       const response = await chatAPI.getOrCreateChat(suggestion.id);
+      console.log('Chat data received:', response.data);
       setChatData(response.data);
+      
+      // Check if Firebase is available
+      if (!database) {
+        throw new Error('Firebase database not initialized. Check your .env file and Firebase configuration.');
+      }
       
       // Listen to Firebase messages
       const messagesRef = ref(database, `chats/${response.data.firebaseChatId}/messages`);
+      console.log('Listening to Firebase path:', `chats/${response.data.firebaseChatId}/messages`);
       
       onValue(messagesRef, (snapshot) => {
+        console.log('Firebase snapshot received');
         const data = snapshot.val();
+        console.log('Firebase data:', data);
+        
         if (data) {
           const messagesList = Object.keys(data).map(key => ({
             id: key,
@@ -52,15 +66,22 @@ const ChatModal = ({ isOpen, onClose, suggestion }) => {
           
           // Sort by timestamp
           messagesList.sort((a, b) => a.timestamp - b.timestamp);
+          console.log('Messages loaded:', messagesList.length);
           setMessages(messagesList);
         } else {
+          console.log('No messages yet');
           setMessages([]);
         }
+        setLoading(false);
+      }, (error) => {
+        console.error('Firebase listener error:', error);
+        setError('Failed to connect to Firebase: ' + error.message);
         setLoading(false);
       });
       
     } catch (error) {
       console.error('Error initializing chat:', error);
+      setError(error.message || 'Failed to initialize chat');
       setLoading(false);
     }
   };
@@ -71,12 +92,16 @@ const ChatModal = ({ isOpen, onClose, suggestion }) => {
     if (!newMessage.trim()) return;
     
     setSending(true);
+    setError(null);
+    
     try {
+      console.log('Sending message:', newMessage);
       await chatAPI.sendMessage(suggestion.id, newMessage.trim());
       setNewMessage('');
+      console.log('Message sent successfully');
     } catch (error) {
       console.error('Error sending message:', error);
-      alert('Failed to send message');
+      setError('Failed to send message: ' + (error.response?.data?.message || error.message));
     } finally {
       setSending(false);
     }
@@ -118,7 +143,31 @@ const ChatModal = ({ isOpen, onClose, suggestion }) => {
         <div className="chat-container">
           {loading ? (
             <div className="loading" style={{ padding: '2rem', textAlign: 'center' }}>
-              Loading chat...
+              <p>Loading chat...</p>
+              <p style={{ fontSize: '0.85rem', color: '#7f8c8d', marginTop: '0.5rem' }}>
+                Connecting to Firebase...
+              </p>
+            </div>
+          ) : error ? (
+            <div className="alert alert-error" style={{ margin: '2rem' }}>
+              <h3>Error</h3>
+              <p>{error}</p>
+              <button 
+                className="btn btn-primary" 
+                onClick={initializeChat}
+                style={{ marginTop: '1rem' }}
+              >
+                Retry
+              </button>
+              <details style={{ marginTop: '1rem', fontSize: '0.85rem' }}>
+                <summary>Troubleshooting Steps</summary>
+                <ol style={{ marginTop: '0.5rem', paddingLeft: '1.5rem' }}>
+                  <li>Check that .env file exists with Firebase config</li>
+                  <li>Verify REACT_APP_FIREBASE_DATABASE_URL is correct</li>
+                  <li>Open browser console (F12) for detailed errors</li>
+                  <li>Check Firebase Console - Database should be enabled</li>
+                </ol>
+              </details>
             </div>
           ) : (
             <>
@@ -126,6 +175,11 @@ const ChatModal = ({ isOpen, onClose, suggestion }) => {
                 {messages.length === 0 ? (
                   <div className="empty-state" style={{ padding: '2rem' }}>
                     <p>No messages yet. Start the discussion!</p>
+                    {chatData && (
+                      <p style={{ fontSize: '0.85rem', color: '#7f8c8d', marginTop: '0.5rem' }}>
+                        Chat ID: {chatData.firebaseChatId}
+                      </p>
+                    )}
                   </div>
                 ) : (
                   messages.map((message) => (
